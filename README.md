@@ -1,6 +1,6 @@
 # Puma Estaciones: gestión de franquicia de gasolineras (SwiftUI + MVVM)
 
-App nativa para iPhone de la franquicia de estaciones **Puma Energy** en El Salvador. Maneja tres combustibles: Súper, Regular y Diésel. Sigue las indicaciones del documento *LABORATORIO 22* y el diseño v2 de Figma.
+App nativa para iPhone de la franquicia de estaciones **Puma Energy** en El Salvador. Maneja tres combustibles: Súper, Regular y Diésel. Sigue las indicaciones del documento *LABORATORIO 22* y el diseño de Figma.
 
 ## Requisitos
 

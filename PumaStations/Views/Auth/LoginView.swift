@@ -65,7 +65,9 @@ struct LoginView: View {
 
     private var header: some View {
         VStack(spacing: 18) {
-            BrandLogoPlaceholder()
+            Image("PumaLogo")
+                .resizable()
+                .scaledToFit()
                 .frame(width: 220, height: 64)
             VStack(spacing: 6) {
                 Text("Control de estaciones")

@@ -103,7 +103,4 @@ Qué hace cada capa:
 
 ## Logo
 
-Por derechos de marca, el login tiene un espacio marcado (`BrandLogoPlaceholder`). Para usar el logo oficial:
-
-1. Agrégalo a `Assets.xcassets` con el nombre `PumaLogo`.
-2. En `LoginView`, reemplaza el placeholder por `Image("PumaLogo").resizable().scaledToFit()`.
+El logo de Puma Energy está en `Assets.xcassets/PumaLogo.imageset` y se muestra en `LoginView`.

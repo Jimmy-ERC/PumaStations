@@ -6,7 +6,15 @@ App nativa para iPhone de la franquicia de estaciones **Puma Energy** en El Salv
 
 - Xcode 16 o superior (preparado para Xcode 16.4).
 - iOS 17.0 o superior (simulador o iPhone).
-- Sin dependencias externas: usa SwiftUI, SwiftData, Swift Charts y CryptoKit.
+- Un proyecto de Supabase (base de datos y autenticación).
+- Sin dependencias externas: usa SwiftUI, SwiftData, Swift Charts y `URLSession` contra la API de Supabase.
+
+## Configurar Supabase
+
+1. En el **SQL Editor** del proyecto ejecuta `supabase/schema.sql` (tablas, políticas RLS y funciones).
+2. Ejecuta `supabase/seed.sql` para cargar los datos de ejemplo: 3 estaciones operando con 45 días de cortes y 1 estación sin gerente. Se puede volver a ejecutar cuando se quiera: borra todo y lo recrea con fechas relativas al día de hoy.
+3. Copia `supabase/Supabase.example.plist` a `PumaStations/Supabase.plist` y escribe la **Project URL** y la **publishable key** (Settings → API Keys). Ese archivo está en `.gitignore`. Nunca uses la *secret key* en la app.
+4. Recomendado: en Authentication → Sign In / Providers desactiva *Allow new users to sign up*. Las cuentas las crea el gerente general desde la app.
 
 ## Cómo ejecutar
 
@@ -14,7 +22,7 @@ App nativa para iPhone de la franquicia de estaciones **Puma Energy** en El Salv
 2. Elige un simulador de iPhone y presiona **Run** (⌘R).
 3. En un iPhone físico, elige tu equipo en *Signing & Capabilities*. Si Xcode lo pide, cambia el *Bundle Identifier*.
 
-La primera vez que se abre, la app carga datos de ejemplo: 3 estaciones operando con 45 días de cortes, y 1 estación sin gerente. Si antes instalaste la versión anterior de la app, sus datos se borran y se cargan los nuevos automáticamente.
+Sin Mac: el workflow `.github/workflows/ios-build.yml` compila la app en cada push a `main`.
 
 ### Cuentas de prueba
 
@@ -52,7 +60,8 @@ PumaStations/
 ├── App/            Punto de entrada; RootView decide la vista según el rol
 ├── Core/           Colores de marca, estilos, formatos y utilidades
 ├── Models/         Modelos de SwiftData y enums del negocio
-├── Services/       DataStore, sesión, reglas de cortes, inventario, métricas y datos de ejemplo
+├── Services/       DataStore, sesión, reglas de cortes, inventario y métricas
+│   └── Supabase/   Cliente REST/Auth, filas de cada tabla y cola de sincronización
 ├── ViewModels/     Un ViewModel @Observable por pantalla
 │   ├── Auth/
 │   ├── General/    Gerente general
@@ -66,12 +75,12 @@ PumaStations/
 
 Qué hace cada capa:
 
-- **Model:** guarda los datos en SwiftData.
+- **Model:** modelos de SwiftData, que son la copia local de lo que el usuario puede ver en Supabase.
   - `Branch` tiene 6 `Pump` y sus `SalesCut`.
   - Cada `SalesCut` agrupa las tres categorías de movimiento: `PumpSale` (una por bomba), `FuelReception` y `FuelLoss`.
   - `UserAccount` guarda al usuario y su rol.
 - **ViewModel:** contiene el estado de la pantalla y sus validaciones.
-  - Lee y guarda a través de `DataStore`.
+  - Lee y guarda a través de `DataStore`, que sube cada cambio a Supabase.
   - Delega las reglas del negocio a los servicios.
 - **View:** solo dibuja el estado del ViewModel y le envía las acciones del usuario. Cada vista crea su ViewModel con `@State` y le inyecta las dependencias por el `init`.
 - **Services:** lógica pura y fácil de probar.
@@ -99,7 +108,15 @@ Qué hace cada capa:
   - Pérdidas en galones y su valor a costo.
   - Margen bruto: ventas − compras − pérdidas.
 - **Alcance por rol:** el gerente de sucursal solo ve y registra datos de su propia estación, y cada estación tiene un solo gerente.
-- **Contraseñas:** se guardan como hash SHA-256.
+- **Contraseñas:** las guarda Supabase Auth; la app nunca las almacena.
+
+## Conexión con Supabase
+
+- **Inicio de sesión:** `SupabaseClient.signIn` usa Supabase Auth (correo y contraseña). Después `RemoteSync.signIn` descarga las tablas y `DataStore` reemplaza la copia local.
+- **Escrituras:** `DataStore.save()` guarda en SwiftData y encola los cambios (`SyncOperation`); `RemoteSync` los sube en orden. Si una subida falla, la app muestra una alerta para reintentar o cerrar sesión.
+- **Seguridad (RLS):** el gerente general ve todo; el gerente de sucursal solo su estación. Un corte cerrado queda bloqueado también en el servidor.
+- **Gerentes:** se crean y editan con la función `save_manager`, que solo acepta al gerente general.
+- Los datos se descargan al iniciar sesión: para ver cambios hechos desde otro dispositivo hay que volver a entrar.
 
 ## Logo
 

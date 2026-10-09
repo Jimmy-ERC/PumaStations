@@ -3,9 +3,13 @@ import Observation
 
 @Observable
 final class LoginViewModel {
+    /// Password of the demo accounts created by `supabase/seed.sql`.
+    static let demoPassword = "Puma2026"
+
     var email = ""
     var password = ""
     var errorMessage: String?
+    private(set) var isLoading = false
 
     private let store: DataStore
     private let session: SessionStore
@@ -16,28 +20,29 @@ final class LoginViewModel {
     }
 
     var canSubmit: Bool {
-        !email.trimmed.isEmpty && !password.isEmpty
+        !email.trimmed.isEmpty && !password.isEmpty && !isLoading
     }
 
-    func login() {
+    /// Signs in with Supabase Auth and downloads the data the user is allowed to see.
+    @MainActor
+    func login() async {
         let normalizedEmail = email.trimmed.lowercased()
         guard !normalizedEmail.isEmpty, !password.isEmpty else {
             errorMessage = "Ingresa tu correo y contraseña."
             return
         }
+        guard !isLoading else { return }
 
-        let hash = PasswordHasher.hash(password)
-        guard let user = store.users().first(where: { $0.email == normalizedEmail && $0.passwordHash == hash }) else {
-            errorMessage = "Correo o contraseña incorrectos."
-            return
-        }
-        guard user.isActive else {
-            errorMessage = "Tu cuenta está desactivada. Contacta a la gerencia general."
-            return
-        }
-
+        isLoading = true
         errorMessage = nil
-        password = ""
-        session.start(with: user)
+        defer { isLoading = false }
+
+        do {
+            let user = try await store.signIn(email: normalizedEmail, password: password)
+            password = ""
+            session.start(with: user)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

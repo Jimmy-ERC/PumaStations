@@ -2,3 +2,6 @@ xcuserdata/
 DerivedData/
 .DS_Store
 *.xcuserstate
+
+# Credenciales de Supabase (copiar desde supabase/Supabase.example.plist)
+PumaStations/Supabase.plist

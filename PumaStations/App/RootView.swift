@@ -20,5 +20,19 @@ struct RootView: View {
             }
         }
         .animation(.default, value: session.currentUser?.persistentModelID)
+        .alert("No se pudo sincronizar", isPresented: syncErrorBinding) {
+            Button("Reintentar") { store.retrySync() }
+            Button("Cerrar sesión", role: .destructive) { session.logout() }
+        } message: {
+            Text(store.syncErrorMessage ?? "")
+        }
+    }
+
+    /// Shown while an upload to Supabase is stuck on an error.
+    private var syncErrorBinding: Binding<Bool> {
+        Binding(
+            get: { session.currentUser != nil && store.syncErrorMessage != nil },
+            set: { _ in }
+        )
     }
 }

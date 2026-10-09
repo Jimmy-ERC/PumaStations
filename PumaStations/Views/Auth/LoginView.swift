@@ -36,7 +36,7 @@ struct LoginView: View {
                             .textContentType(.password)
                             .focused($focusedField, equals: .password)
                             .submitLabel(.go)
-                            .onSubmit { viewModel.login() }
+                            .onSubmit { submit() }
                     }
 
                     if let error = viewModel.errorMessage {
@@ -47,10 +47,14 @@ struct LoginView: View {
                 }
 
                 Button {
-                    focusedField = nil
-                    viewModel.login()
+                    submit()
                 } label: {
-                    Text("Iniciar sesión")
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("Iniciar sesión")
+                    }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(!viewModel.canSubmit)
@@ -61,6 +65,11 @@ struct LoginView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color.screenBackground)
+    }
+
+    private func submit() {
+        focusedField = nil
+        Task { await viewModel.login() }
     }
 
     private var header: some View {
@@ -80,7 +89,7 @@ struct LoginView: View {
 
     private var demoAccounts: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Cuentas de prueba (contraseña: \(SeedDataService.demoPassword))")
+            Text("Cuentas de prueba (contraseña: \(LoginViewModel.demoPassword))")
                 .font(.footnote.weight(.semibold))
             Text("Gerente general: gerente@puma.sv")
             Text("Gerente de sucursal: rmartinez@puma.sv")

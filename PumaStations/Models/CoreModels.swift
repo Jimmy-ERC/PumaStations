@@ -5,10 +5,11 @@ import SwiftData
 
 @Model
 final class UserAccount {
+    /// Id of the user in Supabase Auth (the password lives there, not in the app).
+    var remoteID: UUID = UUID()
     var firstName: String
     var lastName: String
     var email: String
-    var passwordHash: String
     var roleRaw: String
     var dui: String
     var phone: String
@@ -22,7 +23,6 @@ final class UserAccount {
         firstName: String,
         lastName: String,
         email: String,
-        passwordHash: String,
         role: UserRole,
         dui: String = "",
         phone: String = "",
@@ -32,7 +32,6 @@ final class UserAccount {
         self.firstName = firstName
         self.lastName = lastName
         self.email = email
-        self.passwordHash = passwordHash
         self.roleRaw = role.rawValue
         self.dui = dui
         self.phone = phone
@@ -59,6 +58,8 @@ final class UserAccount {
 
 @Model
 final class Branch {
+    /// Id of the row in Supabase.
+    var remoteID: UUID = UUID()
     var name: String
     var code: String
     var address: String
@@ -148,6 +149,8 @@ final class Branch {
 /// Multi-product dispenser: each pump dispenses Diésel, Regular and Súper.
 @Model
 final class Pump {
+    /// Id of the row in Supabase.
+    var remoteID: UUID = UUID()
     var number: Int
     var branch: Branch?
 

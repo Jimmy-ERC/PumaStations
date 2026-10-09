@@ -138,18 +138,18 @@ final class ManagerFormViewModel {
             manager.firstName = firstName.trimmed
             manager.lastName = lastName.trimmed
             manager.email = normalizedEmail
-            if !password.isEmpty {
-                manager.passwordHash = PasswordHasher.hash(password)
-            }
         } else {
             manager = UserAccount(
                 firstName: firstName.trimmed,
                 lastName: lastName.trimmed,
                 email: normalizedEmail,
-                passwordHash: PasswordHasher.hash(password),
                 role: .branchManager
             )
             store.insert(manager)
+        }
+        // The password is stored by Supabase Auth, never in the app.
+        if !password.isEmpty {
+            store.setPassword(password, for: manager)
         }
         manager.dui = dui.trimmed
         manager.phone = phone.trimmed

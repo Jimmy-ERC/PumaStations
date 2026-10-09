@@ -7,6 +7,8 @@ import SwiftData
 /// sales (one record per pump), fuel receptions and losses.
 @Model
 final class SalesCut {
+    /// Id of the row in Supabase.
+    var remoteID: UUID = UUID()
     /// Start of the day the cut belongs to.
     var day: Date
     var shiftRaw: Int
@@ -148,6 +150,8 @@ final class SalesCut {
 /// Sales of one pump in one cut, for the three fuels.
 @Model
 final class PumpSale {
+    /// Id of the row in Supabase.
+    var remoteID: UUID = UUID()
     var pumpNumber: Int
     var isOutOfService: Bool
     var dieselGallons: Double
@@ -214,6 +218,8 @@ final class PumpSale {
 
 @Model
 final class FuelReception {
+    /// Id of the row in Supabase.
+    var remoteID: UUID = UUID()
     var fuelRaw: String
     var gallons: Double
     var costPerGallon: Double
@@ -244,6 +250,8 @@ final class FuelReception {
 
 @Model
 final class FuelLoss {
+    /// Id of the row in Supabase.
+    var remoteID: UUID = UUID()
     var typeRaw: String
     var fuelRaw: String
     var gallons: Double

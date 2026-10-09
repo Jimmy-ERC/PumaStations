@@ -5,7 +5,7 @@ import SwiftData
 struct PumaStationsApp: App {
     private let container: ModelContainer
     @State private var store: DataStore
-    @State private var session = SessionStore()
+    @State private var session: SessionStore
 
     init() {
         let schema = Schema([
@@ -36,12 +36,13 @@ struct PumaStationsApp: App {
             }
         }
 
-        let dataStore = DataStore(context: modelContainer.mainContext)
-        // Loads demo data only the first time the app runs.
-        SeedDataService.seedIfNeeded(store: dataStore)
+        // The data lives in Supabase; SwiftData keeps the local copy of the current session.
+        let sync = SupabaseConfig.load().map { RemoteSync(client: SupabaseClient(config: $0)) }
+        let dataStore = DataStore(context: modelContainer.mainContext, sync: sync)
 
         container = modelContainer
         _store = State(initialValue: dataStore)
+        _session = State(initialValue: SessionStore(store: dataStore))
     }
 
     var body: some Scene {

@@ -1,5 +1,4 @@
 import Foundation
-import CryptoKit
 
 enum AppFormat {
     static let usLocale = Locale(identifier: "en_US")
@@ -48,15 +47,6 @@ enum AppCalendar {
         calendar.firstWeekday = 2
         return calendar
     }()
-}
-
-enum PasswordHasher {
-    /// Academic project: SHA-256 is enough to avoid storing plain-text passwords.
-    static func hash(_ password: String) -> String {
-        SHA256.hash(data: Data(password.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
-    }
 }
 
 extension Double {

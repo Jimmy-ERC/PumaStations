@@ -69,11 +69,14 @@ enum FuelType: String, CaseIterable, Identifiable, Codable {
 enum UserRole: String, Codable {
     case generalManager
     case branchManager
+    /// Works in one branch: sells store products and maintenance services.
+    case employee
 
     var displayName: String {
         switch self {
         case .generalManager: return "Gerente general"
         case .branchManager: return "Gerente de sucursal"
+        case .employee: return "Empleado"
         }
     }
 }
@@ -121,6 +124,162 @@ enum CutStatus: String, Codable {
         switch self {
         case .open: return "En proceso"
         case .closed: return "Cerrado"
+        }
+    }
+}
+
+// MARK: - Store and maintenance
+
+/// Sections of the franchise catalog. Services are not kept in stock.
+enum CatalogCategory: String, CaseIterable, Identifiable, Codable {
+    case convenience
+    case lubricant
+    case service
+
+    var id: String { rawValue }
+
+    /// Categories sold in the store (with inventory).
+    static let products: [CatalogCategory] = [.convenience, .lubricant]
+
+    var displayName: String {
+        switch self {
+        case .convenience: return "Conveniencia"
+        case .lubricant: return "Lubricantes"
+        case .service: return "Mantenimiento"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .convenience: return "cart"
+        case .lubricant: return "drop.triangle"
+        case .service: return "wrench.and.screwdriver"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .convenience: return .brandGreen
+        case .lubricant: return .warningAmber
+        case .service: return .dieselGray
+        }
+    }
+
+    var tracksStock: Bool {
+        self != .service
+    }
+}
+
+/// A sale is either a store ticket (products) or a maintenance order (services).
+enum SaleKind: String, CaseIterable, Identifiable, Codable {
+    case store
+    case service
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .store: return "Tienda"
+        case .service: return "Mantenimiento"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .store: return "cart"
+        case .service: return "wrench.and.screwdriver"
+        }
+    }
+
+    var categories: [CatalogCategory] {
+        switch self {
+        case .store: return CatalogCategory.products
+        case .service: return [.service]
+        }
+    }
+}
+
+enum PaymentMethod: String, CaseIterable, Identifiable, Codable {
+    case cash
+    case card
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .cash: return "Efectivo"
+        case .card: return "Tarjeta"
+        }
+    }
+}
+
+/// Store inventory alert of one product in one branch.
+enum StockStatus: Int, Comparable {
+    case out = 0
+    case low = 1
+    case available = 2
+
+    static func < (lhs: StockStatus, rhs: StockStatus) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+
+    /// Out: nothing left. Low: at or below the minimum of the catalog. Available: otherwise.
+    static func evaluate(available: Int, minimum: Int) -> StockStatus {
+        if available <= 0 { return .out }
+        if available <= minimum { return .low }
+        return .available
+    }
+
+    var displayName: String {
+        switch self {
+        case .out: return "Agotado"
+        case .low: return "Bajo"
+        case .available: return "Disponible"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .out: return .brandRed
+        case .low: return .warningAmber
+        case .available: return .brandGreen
+        }
+    }
+}
+
+// MARK: - Work shifts
+
+/// Attendance of an employee in an assigned shift.
+enum AttendanceStatus {
+    case scheduled
+    case inProgress
+    case completed
+    case missed
+
+    var displayName: String {
+        switch self {
+        case .scheduled: return "Programado"
+        case .inProgress: return "En turno"
+        case .completed: return "Completado"
+        case .missed: return "Sin marcar"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .scheduled: return .secondary
+        case .inProgress: return .warningAmber
+        case .completed: return .brandGreen
+        case .missed: return .brandRed
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .scheduled: return "calendar"
+        case .inProgress: return "clock"
+        case .completed: return "checkmark"
+        case .missed: return "exclamationmark.triangle"
         }
     }
 }

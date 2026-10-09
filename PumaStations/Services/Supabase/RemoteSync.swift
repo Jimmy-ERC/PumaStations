@@ -20,6 +20,10 @@ struct SyncOperation: Sendable {
     static func saveManager(_ params: SaveManagerParams) -> SyncOperation {
         SyncOperation { try await $0.rpc("save_manager", params: params) }
     }
+
+    static func saveEmployee(_ params: SaveEmployeeParams) -> SyncOperation {
+        SyncOperation { try await $0.rpc("save_employee", params: params) }
+    }
 }
 
 /// Talks to Supabase: downloads the data after login and uploads local changes in the background.
@@ -62,6 +66,11 @@ final class RemoteSync {
             snapshot.pumpSales = try await client.selectAll(PumpSaleRecord.self, from: RemoteTable.pumpSales)
             snapshot.receptions = try await client.selectAll(FuelReceptionRecord.self, from: RemoteTable.fuelReceptions)
             snapshot.losses = try await client.selectAll(FuelLossRecord.self, from: RemoteTable.fuelLosses)
+            snapshot.workShifts = try await client.selectAll(WorkShiftRecord.self, from: RemoteTable.workShifts)
+            snapshot.catalogItems = try await client.selectAll(CatalogItemRecord.self, from: RemoteTable.catalogItems)
+            snapshot.stockEntries = try await client.selectAll(StockEntryRecord.self, from: RemoteTable.stockEntries)
+            snapshot.sales = try await client.selectAll(SaleRecord.self, from: RemoteTable.sales)
+            snapshot.saleItems = try await client.selectAll(SaleItemRecord.self, from: RemoteTable.saleItems)
             return (userID, snapshot)
         } catch {
             await client.signOut()

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Profile screen shared by both roles.
+/// Profile screen shared by every role.
 struct ProfileView: View {
     @Environment(SessionStore.self) private var session
 
@@ -27,9 +27,14 @@ struct ProfileView: View {
                 Section("Datos") {
                     LabeledContent("DUI", value: user.dui.isEmpty ? "—" : user.dui)
                     LabeledContent("Teléfono", value: user.phone.isEmpty ? "—" : user.phone)
+                    if !user.jobTitle.isEmpty {
+                        LabeledContent("Puesto", value: user.jobTitle)
+                    }
                     if let branch = user.branch {
                         LabeledContent("Sucursal", value: branch.name)
-                        LabeledContent("Bombas", value: "\(branch.pumps.count)")
+                        if user.role == .branchManager {
+                            LabeledContent("Bombas", value: "\(branch.pumps.count)")
+                        }
                     }
                 }
             }

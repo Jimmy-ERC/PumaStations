@@ -14,9 +14,10 @@ final class DataStore {
     /// Increments after every successful save so views can react to changes.
     private(set) var revision = 0
 
-    /// Only the general manager creates and edits manager accounts.
-    @ObservationIgnored private var canManageUsers = false
-    /// Passwords typed in the manager form, waiting for the next save (they are never stored locally).
+    /// Role of the logged-in user: the general manager saves manager accounts and the catalog,
+    /// the branch manager saves the employees of the branch.
+    @ObservationIgnored private var sessionRole: UserRole?
+    /// Passwords typed in the account forms, waiting for the next save (they are never stored locally).
     @ObservationIgnored private var pendingPasswords: [UUID: String] = [:]
 
     init(context: ModelContext, sync: RemoteSync? = nil) {
@@ -62,6 +63,11 @@ final class DataStore {
 
     /// Removes every record of the local copy (used before downloading the data of a new session).
     func deleteAllData() {
+        deleteAll(SaleItem.self)
+        deleteAll(Sale.self)
+        deleteAll(StockEntry.self)
+        deleteAll(WorkShift.self)
+        deleteAll(CatalogItem.self)
         deleteAll(FuelLoss.self)
         deleteAll(FuelReception.self)
         deleteAll(PumpSale.self)
@@ -110,6 +116,61 @@ final class DataStore {
         }
     }
 
+    // MARK: Staff queries
+
+    func employees(of branch: Branch) -> [UserAccount] {
+        users()
+            .filter { $0.role == .employee && $0.branch?.persistentModelID == branch.persistentModelID }
+            .sorted { $0.fullName.localizedCompare($1.fullName) == .orderedAscending }
+    }
+
+    func workShifts(of branch: Branch) -> [WorkShift] {
+        fetchAll(WorkShift.self).filter { $0.branch?.persistentModelID == branch.persistentModelID }
+    }
+
+    func workShifts(of employee: UserAccount) -> [WorkShift] {
+        fetchAll(WorkShift.self).filter { $0.employee?.persistentModelID == employee.persistentModelID }
+    }
+
+    // MARK: Store queries
+
+    /// Catalog sorted by category and name.
+    func catalogItems() -> [CatalogItem] {
+        let order = CatalogCategory.allCases
+        return fetchAll(CatalogItem.self).sorted { lhs, rhs in
+            let left = order.firstIndex(of: lhs.category) ?? 0
+            let right = order.firstIndex(of: rhs.category) ?? 0
+            if left != right { return left < right }
+            return lhs.name.localizedCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    func isCatalogNameTaken(_ name: String, excluding item: CatalogItem? = nil) -> Bool {
+        fetchAll(CatalogItem.self).contains {
+            $0.name.caseInsensitiveCompare(name.trimmed) == .orderedSame
+                && $0.persistentModelID != item?.persistentModelID
+        }
+    }
+
+    func stockEntries(of branch: Branch) -> [StockEntry] {
+        fetchAll(StockEntry.self).filter { $0.branch?.persistentModelID == branch.persistentModelID }
+    }
+
+    /// Store and maintenance sales of the branch, newest first.
+    func sales(of branch: Branch) -> [Sale] {
+        fetchAll(Sale.self)
+            .filter { $0.branch?.persistentModelID == branch.persistentModelID }
+            .sorted { $0.soldAt > $1.soldAt }
+    }
+
+    func sales(of branches: [Branch]) -> [Sale] {
+        let ids = Set(branches.map(\.persistentModelID))
+        return fetchAll(Sale.self).filter { sale in
+            guard let id = sale.branch?.persistentModelID else { return false }
+            return ids.contains(id)
+        }
+    }
+
     // MARK: Branch creation
 
     /// Creates a branch with its 6 pumps (fixed by the business rules).
@@ -154,7 +215,7 @@ final class DataStore {
         let (userID, snapshot) = try await sync.signIn(email: email, password: password)
         do {
             let user = try replaceAll(with: snapshot, currentUserID: userID)
-            canManageUsers = user.role == .generalManager
+            sessionRole = user.role
             return user
         } catch {
             sync.signOut()
@@ -163,7 +224,7 @@ final class DataStore {
     }
 
     func signOut() {
-        canManageUsers = false
+        sessionRole = nil
         pendingPasswords.removeAll()
         sync?.signOut()
     }
@@ -172,9 +233,9 @@ final class DataStore {
         sync?.retry()
     }
 
-    /// Password to set for a manager in the next `save()` (new account or password change).
-    func setPassword(_ password: String, for manager: UserAccount) {
-        pendingPasswords[manager.remoteID] = password
+    /// Password to set for a manager or an employee in the next `save()` (new account or password change).
+    func setPassword(_ password: String, for account: UserAccount) {
+        pendingPasswords[account.remoteID] = password
     }
 
     // MARK: Download
@@ -198,12 +259,14 @@ final class DataStore {
         }
 
         var currentUser: UserAccount?
+        var users: [UUID: UserAccount] = [:]
         for record in snapshot.profiles {
             let user = UserAccount(record: record)
             context.insert(user)
             if let branchID = record.branchID {
                 user.branch = branches[branchID]
             }
+            users[record.id] = user
             if record.id == currentUserID {
                 currentUser = user
             }
@@ -236,6 +299,49 @@ final class DataStore {
             let loss = FuelLoss(record: record)
             context.insert(loss)
             loss.cut = cut
+        }
+
+        for record in snapshot.workShifts {
+            guard let branch = branches[record.branchID],
+                  let employee = users[record.employeeID],
+                  let shift = WorkShift(record: record) else { continue }
+            context.insert(shift)
+            shift.branch = branch
+            shift.employee = employee
+        }
+
+        var catalog: [UUID: CatalogItem] = [:]
+        for record in snapshot.catalogItems {
+            let item = CatalogItem(record: record)
+            context.insert(item)
+            catalog[record.id] = item
+        }
+
+        for record in snapshot.stockEntries {
+            guard let branch = branches[record.branchID], let item = catalog[record.itemID] else { continue }
+            let entry = StockEntry(record: record)
+            context.insert(entry)
+            entry.branch = branch
+            entry.item = item
+        }
+
+        var sales: [UUID: Sale] = [:]
+        for record in snapshot.sales {
+            guard let branch = branches[record.branchID] else { continue }
+            let sale = Sale(record: record)
+            context.insert(sale)
+            sale.branch = branch
+            // The branch manager sees its employees; an employee only sees its own profile.
+            sale.seller = record.sellerID.flatMap { users[$0] }
+            sales[record.id] = sale
+        }
+
+        for record in snapshot.saleItems {
+            guard let sale = sales[record.saleID], let item = catalog[record.itemID] else { continue }
+            let line = SaleItem(record: record)
+            context.insert(line)
+            line.sale = sale
+            line.item = item
         }
 
         guard let currentUser else {
@@ -275,15 +381,57 @@ final class DataStore {
             operations.append(.insert(newPumps, into: RemoteTable.pumps))
         }
 
-        // Manager accounts are created and edited through a database function.
-        if canManageUsers {
-            var managers = (inserted + changed).compactMap { $0 as? UserAccount }
-            let listed = Set(managers.map(\.remoteID))
+        // Accounts are created and edited through database functions: the general manager
+        // saves branch managers and the branch manager saves the employees of the branch.
+        if sessionRole == .generalManager || sessionRole == .branchManager {
+            var accounts = (inserted + changed).compactMap { $0 as? UserAccount }
+            let listed = Set(accounts.map(\.remoteID))
             // A password change alone may not mark the account as changed.
-            managers += users().filter { pendingPasswords[$0.remoteID] != nil && !listed.contains($0.remoteID) }
-            for manager in managers where manager.role == .branchManager {
-                operations.append(.saveManager(manager.saveParams(password: pendingPasswords[manager.remoteID])))
+            accounts += users().filter { pendingPasswords[$0.remoteID] != nil && !listed.contains($0.remoteID) }
+            for account in accounts {
+                let password = pendingPasswords[account.remoteID]
+                if sessionRole == .generalManager && account.role == .branchManager {
+                    operations.append(.saveManager(account.saveParams(password: password)))
+                } else if sessionRole == .branchManager && account.role == .employee {
+                    operations.append(.saveEmployee(account.saveEmployeeParams(password: password)))
+                }
             }
+        }
+
+        // Catalog (general manager), work shifts and store inventory (branch manager).
+        if sessionRole == .generalManager {
+            let newItems = inserted.compactMap { ($0 as? CatalogItem)?.record }
+            if !newItems.isEmpty {
+                operations.append(.insert(newItems, into: RemoteTable.catalogItems))
+            }
+            for record in changed.compactMap({ ($0 as? CatalogItem)?.record }) {
+                operations.append(.update(record, in: RemoteTable.catalogItems, id: record.id))
+            }
+        }
+        let newShifts = inserted.compactMap { ($0 as? WorkShift)?.record }
+        if !newShifts.isEmpty {
+            operations.append(.insert(newShifts, into: RemoteTable.workShifts))
+        }
+        // The employee marks check-in and check-out on the shift assigned by the manager.
+        for record in changed.compactMap({ ($0 as? WorkShift)?.record }) {
+            operations.append(.update(record, in: RemoteTable.workShifts, id: record.id))
+        }
+        for shift in deleted.compactMap({ $0 as? WorkShift }) {
+            operations.append(.delete(from: RemoteTable.workShifts, id: shift.remoteID))
+        }
+        let newEntries = inserted.compactMap { ($0 as? StockEntry)?.record }
+        if !newEntries.isEmpty {
+            operations.append(.insert(newEntries, into: RemoteTable.stockEntries))
+        }
+
+        // Store and maintenance sales: the ticket first, then its lines.
+        let newStoreSales = inserted.compactMap { ($0 as? Sale)?.record }
+        if !newStoreSales.isEmpty {
+            operations.append(.insert(newStoreSales, into: RemoteTable.sales))
+        }
+        let newSaleItems = inserted.compactMap { ($0 as? SaleItem)?.record }
+        if !newSaleItems.isEmpty {
+            operations.append(.insert(newSaleItems, into: RemoteTable.saleItems))
         }
 
         let newCuts = inserted.compactMap { ($0 as? SalesCut)?.record }
@@ -327,8 +475,11 @@ final class DataStore {
         for record in changed.compactMap({ ($0 as? SalesCut)?.record }) {
             operations.append(.update(record, in: RemoteTable.salesCuts, id: record.id))
         }
-        for record in changed.compactMap({ ($0 as? Branch)?.record }) {
-            operations.append(.update(record, in: RemoteTable.branches, id: record.id))
+        // An employee never edits the branch (linking a sale to it may mark it as changed).
+        if sessionRole != .employee {
+            for record in changed.compactMap({ ($0 as? Branch)?.record }) {
+                operations.append(.update(record, in: RemoteTable.branches, id: record.id))
+            }
         }
 
         return operations

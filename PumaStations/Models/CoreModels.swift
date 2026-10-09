@@ -15,7 +15,9 @@ final class UserAccount {
     var phone: String
     var isActive: Bool
     var createdAt: Date
-    /// Only used by branch managers: the branch they are linked to.
+    /// Position of an employee (for example "Pistero"); empty for managers.
+    var jobTitle: String = ""
+    /// Branch a manager is linked to, or where an employee works.
     @Relationship(deleteRule: .nullify)
     var branch: Branch?
 

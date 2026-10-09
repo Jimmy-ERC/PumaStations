@@ -21,6 +21,11 @@ struct GeneralTabView: View {
             .tabItem { Label("Gerentes", systemImage: "person.2") }
 
             NavigationStack {
+                CatalogListView(store: store)
+            }
+            .tabItem { Label("Catálogo", systemImage: "tag") }
+
+            NavigationStack {
                 ProfileView()
             }
             .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
@@ -63,6 +68,8 @@ struct GeneralDashboardView: View {
                 if viewModel.isConsolidated {
                     BranchSalesTableCard(rows: viewModel.metrics.rows)
                 }
+
+                StoreSalesCard(metrics: viewModel.storeMetrics)
 
                 HStack(spacing: 12) {
                     StatTile(

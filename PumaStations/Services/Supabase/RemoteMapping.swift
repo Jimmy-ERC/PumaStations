@@ -30,6 +30,21 @@ extension UserAccount {
             createdAt: record.createdAt
         )
         remoteID = record.id
+        jobTitle = record.jobTitle
+    }
+
+    func saveEmployeeParams(password: String?) -> SaveEmployeeParams {
+        SaveEmployeeParams(
+            id: remoteID,
+            email: email,
+            password: password,
+            firstName: firstName,
+            lastName: lastName,
+            dui: dui,
+            phone: phone,
+            jobTitle: jobTitle,
+            isActive: isActive
+        )
     }
 
     func saveParams(password: String?) -> SaveManagerParams {
@@ -208,6 +223,127 @@ extension FuelLoss {
             pumpNumber: pumpNumber,
             details: details,
             recordedAt: recordedAt
+        )
+    }
+}
+
+extension WorkShift {
+    convenience init?(record: WorkShiftRecord) {
+        guard let day = RemoteDay.date(from: record.day),
+              let shift = CutShift(rawValue: record.shift) else { return nil }
+        self.init(day: day, shift: shift)
+        remoteID = record.id
+        checkInAt = record.checkInAt
+        checkOutAt = record.checkOutAt
+    }
+
+    /// nil while the shift is not linked to a branch and an employee.
+    var record: WorkShiftRecord? {
+        guard let branch, let employee else { return nil }
+        return WorkShiftRecord(
+            id: remoteID,
+            branchID: branch.remoteID,
+            employeeID: employee.remoteID,
+            day: RemoteDay.string(from: day),
+            shift: shiftRaw,
+            checkInAt: checkInAt,
+            checkOutAt: checkOutAt
+        )
+    }
+}
+
+extension CatalogItem {
+    convenience init(record: CatalogItemRecord) {
+        self.init(
+            name: record.name,
+            category: CatalogCategory(rawValue: record.category) ?? .convenience,
+            detail: record.detail,
+            price: record.price,
+            minStock: record.minStock,
+            isActive: record.isActive,
+            createdAt: record.createdAt
+        )
+        remoteID = record.id
+    }
+
+    var record: CatalogItemRecord {
+        CatalogItemRecord(
+            id: remoteID,
+            name: name,
+            category: categoryRaw,
+            detail: detail,
+            price: price,
+            minStock: minStock,
+            isActive: isActive,
+            createdAt: createdAt
+        )
+    }
+}
+
+extension StockEntry {
+    convenience init(record: StockEntryRecord) {
+        self.init(
+            quantity: record.quantity,
+            unitCost: record.unitCost,
+            note: record.note,
+            receivedAt: record.receivedAt
+        )
+        remoteID = record.id
+    }
+
+    var record: StockEntryRecord? {
+        guard let branch, let item else { return nil }
+        return StockEntryRecord(
+            id: remoteID,
+            branchID: branch.remoteID,
+            itemID: item.remoteID,
+            quantity: quantity,
+            unitCost: unitCost,
+            note: note,
+            receivedAt: receivedAt
+        )
+    }
+}
+
+extension Sale {
+    convenience init(record: SaleRecord) {
+        self.init(
+            kind: SaleKind(rawValue: record.kind) ?? .store,
+            payment: PaymentMethod(rawValue: record.paymentMethod) ?? .cash,
+            vehiclePlate: record.vehiclePlate,
+            soldAt: record.soldAt
+        )
+        remoteID = record.id
+    }
+
+    var record: SaleRecord? {
+        guard let branch else { return nil }
+        return SaleRecord(
+            id: remoteID,
+            branchID: branch.remoteID,
+            sellerID: seller?.remoteID,
+            kind: kindRaw,
+            paymentMethod: paymentRaw,
+            vehiclePlate: vehiclePlate,
+            soldAt: soldAt
+        )
+    }
+}
+
+extension SaleItem {
+    convenience init(record: SaleItemRecord) {
+        self.init(quantity: record.quantity, unitPrice: record.unitPrice)
+        remoteID = record.id
+    }
+
+    var record: SaleItemRecord? {
+        guard let sale, let item else { return nil }
+        return SaleItemRecord(
+            id: remoteID,
+            saleID: sale.remoteID,
+            itemID: item.remoteID,
+            quantity: quantity,
+            unitPrice: unitPrice
         )
     }
 }

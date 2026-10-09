@@ -249,6 +249,62 @@ struct StationDetailView: View {
 
         FuelVolumeCard(gallons: viewModel.metrics.gallonsByFuel)
 
+        // Store, maintenance and staff of the station.
+        Group {
+            StoreSalesCard(metrics: viewModel.storeMetrics)
+
+            NavigationLink {
+                StoreInventoryView(store: storeForReports, branch: viewModel.branch, canRestock: false)
+            } label: {
+                HStack(spacing: 12) {
+                    IconSquare(systemImage: "shippingbox", color: viewModel.stockAlertCount > 0 ? .warningAmber : .brandGreen)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Inventario de tienda")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.primary)
+                        Text(viewModel.stockAlertCount == 0 ? "Sin productos por reabastecer" : "\(viewModel.stockAlertCount) por reabastecer")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .cardStyle()
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 12) {
+                CardHeader(
+                    title: "Personal",
+                    trailing: viewModel.onShiftCount == 1 ? "1 en turno" : "\(viewModel.onShiftCount) en turno"
+                )
+                if viewModel.employees.isEmpty {
+                    Text("Esta estación aún no tiene empleados registrados.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(viewModel.employees) { employee in
+                    HStack(spacing: 10) {
+                        InitialsAvatar(initials: employee.initials, size: 32)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(employee.fullName)
+                                .font(.subheadline)
+                            Text(employee.jobTitle.isEmpty ? employee.email : employee.jobTitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if !employee.isActive {
+                            Pill(text: "Inactivo", color: .brandRed)
+                        }
+                    }
+                }
+            }
+            .cardStyle()
+        }
+
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(title: "Cortes de hoy")
             ForEach(CutShift.allCases) { shift in

@@ -18,6 +18,8 @@ final class GeneralDashboardViewModel {
     var customStart: Date
     var customEnd: Date = .now
     private(set) var metrics: DashboardMetrics = .empty
+    /// Store and maintenance sales of the same scope and period (not affected by the fuel filter).
+    private(set) var storeMetrics: StoreMetrics = .empty
     private(set) var alerts: [TankAlert] = []
     private(set) var tankMatrix: [BranchTanks] = []
 
@@ -63,6 +65,7 @@ final class GeneralDashboardViewModel {
         let range = period.range(customStart: customStart, customEnd: customEnd)
 
         metrics = DashboardCalculator.compute(branches: scope, range: range, fuels: fuelFilter.fuels)
+        storeMetrics = StoreCalculator.compute(sales: store.sales(of: scope), range: range)
         alerts = InventoryCalculator.alerts(for: scope)
         tankMatrix = scope.map {
             BranchTanks(id: $0.persistentModelID, name: $0.name, levels: InventoryCalculator.levels(for: $0))

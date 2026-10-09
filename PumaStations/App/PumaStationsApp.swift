@@ -15,7 +15,12 @@ struct PumaStationsApp: App {
             SalesCut.self,
             PumpSale.self,
             FuelReception.self,
-            FuelLoss.self
+            FuelLoss.self,
+            WorkShift.self,
+            CatalogItem.self,
+            StockEntry.self,
+            Sale.self,
+            SaleItem.self
         ])
 
         let configuration = ModelConfiguration(schema: schema)

@@ -93,6 +93,7 @@ struct LoginView: View {
                 .font(.footnote.weight(.semibold))
             Text("Gerente general: gerente@puma.sv")
             Text("Gerente de sucursal: rmartinez@puma.sv")
+            Text("Empleado: mrivas@puma.sv")
         }
         .font(.footnote)
         .foregroundStyle(.secondary)

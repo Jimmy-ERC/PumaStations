@@ -18,6 +18,16 @@ struct BranchTabView: View {
                 .tabItem { Label("Cortes", systemImage: "fuelpump") }
 
                 NavigationStack {
+                    BranchSalesView(store: store, branch: branch)
+                }
+                .tabItem { Label("Ventas", systemImage: "chart.bar.xaxis") }
+
+                NavigationStack {
+                    StaffHubView(store: store, branch: branch)
+                }
+                .tabItem { Label("Personal", systemImage: "person.2") }
+
+                NavigationStack {
                     ProfileView()
                 }
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
@@ -28,7 +38,7 @@ struct BranchTabView: View {
     }
 }
 
-/// Shown when a branch manager logs in before being linked to a branch.
+/// Shown when a branch manager or an employee logs in without a branch.
 struct NoBranchAssignedView: View {
     @Environment(SessionStore.self) private var session
 
@@ -39,7 +49,7 @@ struct NoBranchAssignedView: View {
                 .foregroundStyle(Color.warningAmber)
             Text("Aún no tienes sucursal")
                 .font(.title2.bold())
-            Text("El gerente general debe vincularte a una sucursal para que puedas registrar los cortes.")
+            Text("La gerencia debe vincularte a una sucursal para que puedas empezar a operar.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             Button("Cerrar sesión") { session.logout() }

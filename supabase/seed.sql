@@ -4,6 +4,9 @@
 -- ATENCIÓN: borra TODOS los datos de las tablas de la app y los usuarios de Auth que tengan perfil,
 -- y los vuelve a crear con fechas relativas al día de hoy. Se puede ejecutar las veces que haga falta.
 -- Todas las cuentas usan la contraseña Puma2026.
+--
+-- Con parcial2.sql instalado también se borran empleados, turnos y ventas de tienda:
+-- ejecutar seed_parcial2.sql después para recrearlos.
 
 do $$
 declare

@@ -14,6 +14,8 @@ struct RootView: View {
                     GeneralTabView()
                 case .branchManager:
                     BranchTabView(user: user)
+                case .employee:
+                    EmployeeTabView(user: user)
                 }
             } else {
                 LoginView(store: store, session: session)

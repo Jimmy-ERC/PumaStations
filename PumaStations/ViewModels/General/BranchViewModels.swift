@@ -137,6 +137,9 @@ final class StationDetailViewModel {
     private(set) var todayCuts: [CutShift: SalesCut] = [:]
     private(set) var recentLosses: [FuelLoss] = []
     private(set) var recentCuts: [SalesCut] = []
+    private(set) var storeMetrics: StoreMetrics = .empty
+    private(set) var employees: [UserAccount] = []
+    private(set) var stockAlertCount = 0
 
     let branch: Branch
     private let store: DataStore
@@ -144,6 +147,11 @@ final class StationDetailViewModel {
     init(store: DataStore, branch: Branch) {
         self.store = store
         self.branch = branch
+    }
+
+    /// Employees with a shift in progress right now.
+    var onShiftCount: Int {
+        store.workShifts(of: branch).filter { $0.isToday && $0.isInProgress }.count
     }
 
     /// Most urgent non-optimal tank, used for the banner.
@@ -169,5 +177,15 @@ final class StationDetailViewModel {
         todayCuts = cuts
         recentLosses = Array(branch.cuts.flatMap(\.losses).sorted { $0.recordedAt > $1.recordedAt }.prefix(5))
         recentCuts = Array(branch.closedCuts.sorted { $0.referenceDate > $1.referenceDate }.prefix(6))
+
+        let sales = store.sales(of: branch)
+        storeMetrics = StoreCalculator.compute(sales: sales, range: period.range())
+        employees = store.employees(of: branch)
+        let levels = StoreCalculator.stockLevels(
+            items: store.catalogItems(),
+            entries: store.stockEntries(of: branch),
+            sales: sales
+        )
+        stockAlertCount = StoreCalculator.alerts(in: levels).count
     }
 }
